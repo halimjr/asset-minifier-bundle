@@ -1,0 +1,34 @@
+<?php
+
+namespace HalimJr\AssetMinifierBundle\DependencyInjection;
+
+use HalimJr\AssetMinifierBundle\Binary\EsbuildBinary;
+use Symfony\Component\Config\Definition\Builder\TreeBuilder;
+use Symfony\Component\Config\Definition\ConfigurationInterface;
+
+class Configuration implements ConfigurationInterface
+{
+    public function getConfigTreeBuilder(): TreeBuilder
+    {
+        $tree = new TreeBuilder('asset_minifier');
+
+        $tree->getRootNode()
+            ->children()
+                ->scalarNode('esbuild_version')
+                    ->defaultValue(EsbuildBinary::DEFAULT_VERSION)
+                    ->info('The esbuild version to download. Example: "0.25.2".')
+                    ->validate()
+                        ->ifTrue(static fn (string $v) => !preg_match('/^\d+\.\d+\.\d+$/', $v))
+                        ->thenInvalid('Invalid version "%s". Expected format: "X.Y.Z" (e.g. "0.25.2").')
+                    ->end()
+                ->end()
+                ->scalarNode('binary_path')
+                    ->defaultNull()
+                    ->info('Absolute path to a pre-existing esbuild binary. Disables automatic downloading.')
+                ->end()
+            ->end()
+        ;
+
+        return $tree;
+    }
+}

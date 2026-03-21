@@ -1,0 +1,44 @@
+{
+    "name": "halimjr/asset-minifier-bundle",
+    "description": "Zero-dependency JS minification for Symfony Asset Mapper — powered by esbuild, no Node.js or npm required.",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "keywords": ["symfony", "asset-mapper", "javascript", "minify", "esbuild", "bundle"],
+    "authors": [
+        {
+            "name": "Abdul Halim",
+            "homepage": "https://halimjr.com"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "ext-phar": "*",
+        "ext-zlib": "*",
+        "symfony/asset-mapper": "^6.3|^7.0",
+        "symfony/framework-bundle": "^6.3|^7.0",
+        "symfony/process": "^6.3|^7.0"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.5|^11.0",
+        "symfony/phpunit-bridge": "^6.3|^7.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "HalimJr\\AssetMinifierBundle\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "HalimJr\\AssetMinifierBundle\\Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    },
+    "extra": {
+        "thanks": {
+            "name": "halimjr/asset-minifier-bundle",
+            "url": "https://github.com/halimjr/asset-minifier-bundle"
+        }
+    }
+}
