@@ -44,4 +44,22 @@ class EsbuildBinaryTest extends TestCase
         $this->assertStringStartsWith('https://registry.npmjs.org/@esbuild/', $url);
         $this->assertStringContainsString('0.25.2', $url);
     }
+
+    public function testCustomBinaryPathOverridesGetPath(): void
+    {
+        $binary = new EsbuildBinary('/some/dir', '0.25.2', '/usr/local/bin/esbuild');
+        $this->assertSame('/usr/local/bin/esbuild', $binary->getPath());
+    }
+
+    public function testIsManagedReturnsTrueByDefault(): void
+    {
+        $binary = new EsbuildBinary('/some/dir', '0.25.2');
+        $this->assertTrue($binary->isManaged());
+    }
+
+    public function testIsManagedReturnsFalseWhenCustomPathSet(): void
+    {
+        $binary = new EsbuildBinary('/some/dir', '0.25.2', '/usr/local/bin/esbuild');
+        $this->assertFalse($binary->isManaged());
+    }
 }

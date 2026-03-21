@@ -45,6 +45,19 @@ class DownloadEsbuildCommand extends Command
             return Command::SUCCESS;
         }
 
+        if (!$this->binary->isManaged()) {
+            if ($this->binary->isAvailable()) {
+                $io->success(sprintf('Using pre-configured binary at "%s".', $this->binary->getPath()));
+            } else {
+                $io->error(sprintf(
+                    'binary_path is configured but no binary was found at "%s".',
+                    $this->binary->getPath()
+                ));
+                return Command::FAILURE;
+            }
+            return Command::SUCCESS;
+        }
+
         if ($this->binary->isAvailable()) {
             $io->success(sprintf('esbuild v%s is already downloaded.', $this->binary->getVersion()));
 

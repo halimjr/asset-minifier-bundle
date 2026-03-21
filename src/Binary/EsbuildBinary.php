@@ -23,16 +23,30 @@ class EsbuildBinary
     public function __construct(
         private readonly string $binaryDir,
         private readonly string $version = self::DEFAULT_VERSION,
+        private readonly ?string $customBinaryPath = null,
     ) {}
 
     /**
      * Returns the absolute path to the esbuild binary (may not exist yet).
+     *
+     * When binary_path is configured, that path is returned directly.
+     * Otherwise the bundle-managed versioned path is used.
      */
     public function getPath(): string
     {
-        return rtrim($this->binaryDir, '/\\')
+        return $this->customBinaryPath ?? (
+            rtrim($this->binaryDir, '/\\')
             . \DIRECTORY_SEPARATOR . $this->version
-            . \DIRECTORY_SEPARATOR . Platform::binaryFilename();
+            . \DIRECTORY_SEPARATOR . Platform::binaryFilename()
+        );
+    }
+
+    /**
+     * Returns true if the binary is managed automatically by this bundle (i.e. binary_path is not set).
+     */
+    public function isManaged(): bool
+    {
+        return $this->customBinaryPath === null;
     }
 
     /**
@@ -60,6 +74,14 @@ class EsbuildBinary
      */
     public function download(?OutputInterface $output = null): void
     {
+        if ($this->customBinaryPath !== null) {
+            throw new BinaryDownloadException(sprintf(
+                'Cannot auto-download when "binary_path" is configured. '
+                . 'Ensure the binary exists at "%s".',
+                $this->customBinaryPath
+            ));
+        }
+
         $platform   = Platform::detect();
         $url        = sprintf(self::NPM_REGISTRY_URL, $platform, $platform, $this->version);
         $binaryPath = $this->getPath();

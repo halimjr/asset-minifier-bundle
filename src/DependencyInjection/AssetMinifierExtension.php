@@ -18,13 +18,13 @@ class AssetMinifierExtension extends Extension
         $configuration = new Configuration();
         $config = $this->processConfiguration($configuration, $configs);
 
-        $binaryDir = $config['binary_path']
-            ?? ('%kernel.project_dir%' . \DIRECTORY_SEPARATOR . 'var' . \DIRECTORY_SEPARATOR . 'esbuild');
+        $binaryDir = '%kernel.project_dir%' . \DIRECTORY_SEPARATOR . 'var' . \DIRECTORY_SEPARATOR . 'esbuild';
 
         // EsbuildBinary service
         $binaryDef = new Definition(EsbuildBinary::class, [
-            '$binaryDir' => $binaryDir,
-            '$version'   => $config['esbuild_version'],
+            '$binaryDir'        => $binaryDir,
+            '$version'          => $config['esbuild_version'],
+            '$customBinaryPath' => $config['binary_path'],
         ]);
         $container->setDefinition(EsbuildBinary::class, $binaryDef);
 
