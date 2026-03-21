@@ -26,4 +26,15 @@ class BundleTest extends TestCase
         $extension = new AssetMinifierExtension();
         $this->assertSame('asset_minifier', $extension->getAlias());
     }
+
+    public function testConfigurationDefaults(): void
+    {
+        $configuration = new \HalimJr\AssetMinifierBundle\DependencyInjection\Configuration();
+        $processor = new \Symfony\Component\Config\Definition\Processor();
+        $config = $processor->processConfiguration($configuration, []);
+
+        $this->assertSame(\HalimJr\AssetMinifierBundle\Binary\EsbuildBinary::DEFAULT_VERSION, $config['esbuild_version']);
+        $this->assertNull($config['binary_path']);
+        $this->assertFalse($config['source_maps']);
+    }
 }

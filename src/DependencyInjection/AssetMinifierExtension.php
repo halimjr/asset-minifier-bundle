@@ -29,7 +29,8 @@ class AssetMinifierExtension extends Extension
 
         // EsbuildCompiler service — runs last in the asset compiler chain
         $compilerDef = new Definition(EsbuildCompiler::class, [
-            '$binary' => $binaryDef,
+            '$binary'      => $binaryDef,
+            '$sourceMaps'  => $config['source_maps'],
         ]);
         $compilerDef->addTag('asset_mapper.compiler', ['priority' => -100]);
         $container->setDefinition(EsbuildCompiler::class, $compilerDef);

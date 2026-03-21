@@ -18,7 +18,10 @@ class EsbuildCompiler implements AssetCompilerInterface
 {
     private bool $initialized = false;
 
-    public function __construct(private readonly EsbuildBinary $binary) {}
+    public function __construct(
+        private readonly EsbuildBinary $binary,
+        private readonly bool $sourceMaps = false,
+    ) {}
 
     public function supports(MappedAsset $asset): bool
     {
@@ -40,13 +43,20 @@ class EsbuildCompiler implements AssetCompilerInterface
         try {
             file_put_contents($tmp, $content);
 
-            $process = new Process([
+            $args = [
                 $this->binary->getPath(),
                 '--minify',
                 '--format=esm',
                 '--log-level=silent',
-                $tmp,
-            ]);
+            ];
+
+            if ($this->sourceMaps) {
+                $args[] = '--sourcemap=inline';
+            }
+
+            $args[] = $tmp;
+
+            $process = new Process($args);
             $process->setTimeout(30);
             $process->run();
 

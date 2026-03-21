@@ -26,6 +26,10 @@ class Configuration implements ConfigurationInterface
                     ->defaultNull()
                     ->info('Absolute path to a pre-existing esbuild binary. Disables automatic downloading.')
                 ->end()
+                ->booleanNode('source_maps')
+                    ->defaultFalse()
+                    ->info('Embed source maps inline in minified output. Useful for production debugging.')
+                ->end()
             ->end()
         ;
 

@@ -36,4 +36,12 @@ class EsbuildBinaryTest extends TestCase
         $binary = new EsbuildBinary('/some/dir');
         $this->assertSame(EsbuildBinary::DEFAULT_VERSION, $binary->getVersion());
     }
+
+    public function testGetDownloadUrl(): void
+    {
+        $binary = new EsbuildBinary('/some/dir', '0.25.2');
+        $url = $binary->getDownloadUrl();
+        $this->assertStringStartsWith('https://registry.npmjs.org/@esbuild/', $url);
+        $this->assertStringContainsString('0.25.2', $url);
+    }
 }

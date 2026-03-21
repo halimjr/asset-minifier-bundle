@@ -94,6 +94,12 @@ class EsbuildBinary
         return $this->version;
     }
 
+    public function getDownloadUrl(): string
+    {
+        $platform = Platform::detect();
+        return sprintf('https://registry.npmjs.org/@esbuild/%s/-/%s-%s.tgz', $platform, $platform, $this->version);
+    }
+
     /**
      * @throws BinaryDownloadException
      */
