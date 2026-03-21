@@ -52,6 +52,9 @@ class EsbuildBinary
     /**
      * Downloads and extracts the esbuild binary for the current platform.
      *
+     * The tarball integrity is verified against the SHA-512 hash published by the npm registry
+     * before extraction, protecting against corrupted downloads or tampered responses.
+     *
      * @throws BinaryDownloadException
      */
     public function download(?OutputInterface $output = null): void
@@ -62,7 +65,13 @@ class EsbuildBinary
         $binaryDir = \dirname($binaryPath);
 
         if (!is_dir($binaryDir) && !mkdir($binaryDir, 0777, true) && !is_dir($binaryDir)) {
-            throw new BinaryDownloadException(sprintf('Could not create directory "%s".', $binaryDir));
+            throw new BinaryDownloadException(sprintf(
+                'Could not create directory "%s". '
+                . 'If your filesystem is read-only (e.g. in a Docker container), '
+                . 'pre-download the binary during the image build step or set "binary_path" '
+                . 'in your asset_minifier configuration.',
+                $binaryDir
+            ));
         }
 
         $output?->writeln(sprintf(
@@ -74,7 +83,12 @@ class EsbuildBinary
         $tarPath = $binaryPath . '.tmp.tgz';
 
         try {
+            $integrity = $this->fetchExpectedIntegrity($platform);
             $this->downloadFile($url, $tarPath);
+
+            $output?->writeln('  <info>Verifying integrity...</info>');
+            $this->verifyIntegrity($tarPath, $integrity);
+
             $this->extractBinary($tarPath, $binaryPath);
         } finally {
             if (is_file($tarPath)) {
@@ -98,6 +112,74 @@ class EsbuildBinary
     {
         $platform = Platform::detect();
         return sprintf('https://registry.npmjs.org/@esbuild/%s/-/%s-%s.tgz', $platform, $platform, $this->version);
+    }
+
+    /**
+     * Fetches the expected SHA-512 integrity hash from the npm registry metadata API.
+     *
+     * @throws BinaryDownloadException
+     */
+    private function fetchExpectedIntegrity(string $platform): string
+    {
+        $metaUrl = sprintf('https://registry.npmjs.org/@esbuild/%s/%s', $platform, $this->version);
+
+        $context = stream_context_create([
+            'http' => [
+                'follow_location' => 1,
+                'max_redirects'   => 3,
+                'timeout'         => 15,
+                'header'          => "User-Agent: halimjr/asset-minifier-bundle\r\nAccept: application/json\r\n",
+            ],
+            'ssl' => [
+                'verify_peer'      => true,
+                'verify_peer_name' => true,
+            ],
+        ]);
+
+        $json = @file_get_contents($metaUrl, false, $context);
+
+        if ($json === false) {
+            throw new BinaryDownloadException(sprintf(
+                'Failed to fetch package metadata from "%s". Check your internet connection.',
+                $metaUrl
+            ));
+        }
+
+        $data = json_decode($json, true);
+
+        if (!isset($data['dist']['integrity'])) {
+            throw new BinaryDownloadException(sprintf(
+                'Could not find integrity hash in npm registry response for "%s".',
+                $metaUrl
+            ));
+        }
+
+        return $data['dist']['integrity'];
+    }
+
+    /**
+     * Verifies a file's SHA-512 hash against a Subresource Integrity string (e.g. "sha512-...").
+     *
+     * @throws BinaryDownloadException
+     */
+    private function verifyIntegrity(string $filePath, string $sriHash): void
+    {
+        if (!str_starts_with($sriHash, 'sha512-')) {
+            throw new BinaryDownloadException(sprintf(
+                'Unexpected integrity hash format "%s". Expected "sha512-<base64>" from npm registry.',
+                $sriHash
+            ));
+        }
+
+        $expected = substr($sriHash, 7);
+        $actual   = base64_encode(hash_file('sha512', $filePath, true));
+
+        if (!hash_equals($expected, $actual)) {
+            throw new BinaryDownloadException(
+                'esbuild binary integrity check failed. The downloaded file may be corrupted or tampered with. '
+                . 'Please try again or report the issue at https://github.com/halimjr/asset-minifier-bundle.'
+            );
+        }
     }
 
     /**

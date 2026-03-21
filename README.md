@@ -58,6 +58,8 @@ The bundle registers a compiler with Symfony Asset Mapper's pipeline via `AssetC
 
 The esbuild binary (~5 MB compressed) is downloaded once from the npm registry and cached in `var/esbuild/`. It is version-pinned by the bundle and re-downloaded automatically when you upgrade to a bundle version that ships a newer esbuild release.
 
+**Binary trust model.** The download uses HTTPS with TLS peer verification (the same trust model as every `npm install`). Additionally, the bundle fetches the expected SHA-512 hash from the npm registry metadata API and verifies the tarball before extraction. If the hash does not match, the download is rejected and the binary is never written to disk.
+
 **Vendor assets are intentionally skipped.** Pre-minified packages managed via importmap (e.g. `@hotwired/stimulus`, `apexcharts`) pass through untouched.
 
 **Stimulus controllers are safe.** The bundle runs after Symfony's `JavaScriptImportPathCompiler`, so import paths are resolved and registered in the importmap before minification occurs. Method names used in `data-action` attributes are not mangled.
@@ -114,6 +116,26 @@ deploy:
     - php bin/console asset-map:compile --env=prod
     - php bin/console cache:clear --env=prod
 ```
+
+### Docker
+
+If your container's application directory is read-only, `var/esbuild/` cannot be written at runtime. Download the binary during the image build step instead:
+
+```dockerfile
+RUN composer install --no-dev --optimize-autoloader
+RUN php bin/console asset-minifier:download --env=prod
+RUN php bin/console asset-map:compile --env=prod
+```
+
+Alternatively, place the binary at a writable or pre-provisioned path and tell the bundle where it is:
+
+```yaml
+# config/packages/prod/asset_minifier.yaml
+asset_minifier:
+    binary_path: /usr/local/bin/esbuild
+```
+
+When `binary_path` is set, the bundle uses that binary directly and never attempts a download.
 
 ### General deploy script
 
