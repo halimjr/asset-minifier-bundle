@@ -21,6 +21,7 @@ class EsbuildCompiler implements AssetCompilerInterface
     public function __construct(
         private readonly EsbuildBinary $binary,
         private readonly bool $sourceMaps = false,
+        private readonly bool $debug = false,
     ) {}
 
     public function supports(MappedAsset $asset): bool
@@ -60,8 +61,16 @@ class EsbuildCompiler implements AssetCompilerInterface
             $process->setTimeout(30);
             $process->run();
 
-            // On failure, return original content so the build never breaks.
             if (!$process->isSuccessful()) {
+                if ($this->debug) {
+                    throw new \RuntimeException(sprintf(
+                        'esbuild failed to minify "%s": %s',
+                        $asset->sourcePath,
+                        trim($process->getErrorOutput()) ?: 'unknown error'
+                    ));
+                }
+
+                // In production, degrade gracefully rather than breaking the build.
                 return $content;
             }
 

@@ -52,6 +52,7 @@ class EsbuildBinary
     /**
      * Downloads and extracts the esbuild binary for the current platform.
      *
+     * Uses an exclusive file lock to prevent concurrent downloads in multi-worker deployments.
      * The tarball integrity is verified against the SHA-512 hash published by the npm registry
      * before extraction, protecting against corrupted downloads or tampered responses.
      *
@@ -59,48 +60,81 @@ class EsbuildBinary
      */
     public function download(?OutputInterface $output = null): void
     {
-        $platform = Platform::detect();
-        $url = sprintf(self::NPM_REGISTRY_URL, $platform, $platform, $this->version);
+        $platform   = Platform::detect();
+        $url        = sprintf(self::NPM_REGISTRY_URL, $platform, $platform, $this->version);
         $binaryPath = $this->getPath();
-        $binaryDir = \dirname($binaryPath);
+        $binaryDir  = \dirname($binaryPath);
+        $baseDir    = rtrim($this->binaryDir, '/\\');
 
-        if (!is_dir($binaryDir) && !mkdir($binaryDir, 0777, true) && !is_dir($binaryDir)) {
+        // Create the base directory first so we have a stable place for the lock file.
+        if (!is_dir($baseDir) && !mkdir($baseDir, 0755, true) && !is_dir($baseDir)) {
             throw new BinaryDownloadException(sprintf(
                 'Could not create directory "%s". '
                 . 'If your filesystem is read-only (e.g. in a Docker container), '
                 . 'pre-download the binary during the image build step or set "binary_path" '
                 . 'in your asset_minifier configuration.',
-                $binaryDir
+                $baseDir
             ));
         }
 
-        $output?->writeln(sprintf(
-            '  <info>Downloading esbuild v%s for %s...</info>',
-            $this->version,
-            $platform
-        ));
+        $lockPath = $baseDir . \DIRECTORY_SEPARATOR . '.download.lock';
+        $lock = @fopen($lockPath, 'c');
 
-        $tarPath = $binaryPath . '.tmp.tgz';
+        if ($lock === false) {
+            throw new BinaryDownloadException(sprintf('Could not create lock file "%s".', $lockPath));
+        }
+
+        // Block until any concurrent download finishes, then re-check availability.
+        flock($lock, \LOCK_EX);
 
         try {
-            $integrity = $this->fetchExpectedIntegrity($platform);
-            $this->downloadFile($url, $tarPath);
-
-            $output?->writeln('  <info>Verifying integrity...</info>');
-            $this->verifyIntegrity($tarPath, $integrity);
-
-            $this->extractBinary($tarPath, $binaryPath);
-        } finally {
-            if (is_file($tarPath)) {
-                @unlink($tarPath);
+            if ($this->isAvailable()) {
+                return;
             }
-        }
 
-        if (PHP_OS_FAMILY !== 'Windows') {
-            chmod($binaryPath, 0755);
-        }
+            if (!is_dir($binaryDir) && !mkdir($binaryDir, 0755, true) && !is_dir($binaryDir)) {
+                throw new BinaryDownloadException(sprintf(
+                    'Could not create directory "%s". '
+                    . 'If your filesystem is read-only (e.g. in a Docker container), '
+                    . 'pre-download the binary during the image build step or set "binary_path" '
+                    . 'in your asset_minifier configuration.',
+                    $binaryDir
+                ));
+            }
 
-        $output?->writeln('  <info>esbuild downloaded successfully.</info>');
+            $output?->writeln(sprintf(
+                '  <info>Downloading esbuild v%s for %s...</info>',
+                $this->version,
+                $platform
+            ));
+
+            $tarPath = $binaryPath . '.tmp.tgz';
+
+            try {
+                $integrity = $this->fetchExpectedIntegrity($platform);
+                $this->downloadFile($url, $tarPath);
+
+                $output?->writeln('  <info>Verifying integrity...</info>');
+                $this->verifyIntegrity($tarPath, $integrity);
+
+                $this->extractBinary($tarPath, $binaryPath);
+            } finally {
+                if (is_file($tarPath)) {
+                    @unlink($tarPath);
+                }
+            }
+
+            if (PHP_OS_FAMILY !== 'Windows') {
+                chmod($binaryPath, 0755);
+            }
+
+            $output?->writeln('  <info>esbuild downloaded successfully.</info>');
+
+            $this->cleanupOldVersions();
+        } finally {
+            flock($lock, \LOCK_UN);
+            fclose($lock);
+        }
     }
 
     public function getVersion(): string
@@ -231,7 +265,7 @@ class EsbuildBinary
         $tmpDir = $tarPath . '_dir';
 
         try {
-            if (!mkdir($tmpDir, 0777, true) && !is_dir($tmpDir)) {
+            if (!mkdir($tmpDir, 0755, true) && !is_dir($tmpDir)) {
                 throw new BinaryDownloadException(sprintf('Could not create temp directory "%s".', $tmpDir));
             }
 
@@ -263,6 +297,27 @@ class EsbuildBinary
             }
         } finally {
             $this->removeDirectory($tmpDir);
+        }
+    }
+
+    /**
+     * Removes version directories that do not match the current version.
+     * Prevents var/esbuild/ from accumulating stale binaries after upgrades.
+     */
+    private function cleanupOldVersions(): void
+    {
+        $baseDir = rtrim($this->binaryDir, '/\\');
+
+        if (!is_dir($baseDir)) {
+            return;
+        }
+
+        foreach (new \DirectoryIterator($baseDir) as $item) {
+            if ($item->isDot() || !$item->isDir() || $item->getFilename() === $this->version) {
+                continue;
+            }
+
+            $this->removeDirectory($item->getRealPath());
         }
     }
 

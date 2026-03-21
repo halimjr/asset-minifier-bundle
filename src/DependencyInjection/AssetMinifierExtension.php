@@ -9,6 +9,7 @@ use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\Extension;
+use Symfony\Component\DependencyInjection\Parameter;
 
 class AssetMinifierExtension extends Extension
 {
@@ -31,6 +32,7 @@ class AssetMinifierExtension extends Extension
         $compilerDef = new Definition(EsbuildCompiler::class, [
             '$binary'      => $binaryDef,
             '$sourceMaps'  => $config['source_maps'],
+            '$debug'       => new Parameter('kernel.debug'),
         ]);
         $compilerDef->addTag('asset_mapper.compiler', ['priority' => -100]);
         $container->setDefinition(EsbuildCompiler::class, $compilerDef);
