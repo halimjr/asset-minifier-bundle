@@ -36,5 +36,7 @@ class BundleTest extends TestCase
         $this->assertSame(\HalimJr\AssetMinifierBundle\Binary\EsbuildBinary::DEFAULT_VERSION, $config['esbuild_version']);
         $this->assertNull($config['binary_path']);
         $this->assertFalse($config['source_maps']);
+        $this->assertTrue($config['minify_js']);
+        $this->assertTrue($config['minify_css']);
     }
 }

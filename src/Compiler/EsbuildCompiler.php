@@ -9,7 +9,7 @@ use Symfony\Component\AssetMapper\MappedAsset;
 use Symfony\Component\Process\Process;
 
 /**
- * Minifies JavaScript assets using esbuild.
+ * Minifies JavaScript and CSS assets using esbuild.
  *
  * Registered with priority -100 so it always runs after Symfony's
  * JavaScriptImportPathCompiler, which must resolve import paths first.
@@ -22,12 +22,21 @@ class EsbuildCompiler implements AssetCompilerInterface
         private readonly EsbuildBinary $binary,
         private readonly bool $sourceMaps = false,
         private readonly bool $debug = false,
+        private readonly bool $minifyJs = true,
+        private readonly bool $minifyCss = true,
     ) {}
 
     public function supports(MappedAsset $asset): bool
     {
-        // Skip vendor assets (pre-minified CDN packages) and non-JS files.
-        return !$asset->isVendor && 'js' === $asset->publicExtension;
+        if ($asset->isVendor) {
+            return false;
+        }
+
+        return match ($asset->publicExtension) {
+            'js'  => $this->minifyJs,
+            'css' => $this->minifyCss,
+            default => false,
+        };
     }
 
     public function compile(string $content, MappedAsset $asset, AssetMapperInterface $assetMapper): string
@@ -39,7 +48,8 @@ class EsbuildCompiler implements AssetCompilerInterface
             $this->initialized = true;
         }
 
-        $tmp = sys_get_temp_dir() . \DIRECTORY_SEPARATOR . 'esbuild_' . bin2hex(random_bytes(8)) . '.js';
+        $ext = $asset->publicExtension;
+        $tmp = sys_get_temp_dir() . \DIRECTORY_SEPARATOR . 'esbuild_' . bin2hex(random_bytes(8)) . '.' . $ext;
 
         try {
             file_put_contents($tmp, $content);
@@ -47,9 +57,14 @@ class EsbuildCompiler implements AssetCompilerInterface
             $args = [
                 $this->binary->getPath(),
                 '--minify',
-                '--format=esm',
                 '--log-level=silent',
             ];
+
+            if ('js' === $ext) {
+                $args[] = '--format=esm';
+            } elseif ('css' === $ext) {
+                $args[] = '--supported:hex-rgba=false';
+            }
 
             if ($this->sourceMaps) {
                 $args[] = '--sourcemap=inline';

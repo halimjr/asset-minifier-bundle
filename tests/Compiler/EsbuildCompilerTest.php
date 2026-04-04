@@ -45,12 +45,41 @@ class EsbuildCompilerTest extends TestCase
         $this->assertFalse($compiler->supports($this->asset('vendor/lib.js', isVendor: true)));
     }
 
-    public function testDoesNotSupportNonJsAsset(): void
+    public function testDoesNotSupportImageAsset(): void
     {
         $compiler = new EsbuildCompiler($this->binaryMock());
 
+        $this->assertFalse($compiler->supports($this->asset('app/logo.png')));
+    }
+
+    public function testSupportsCssAsset(): void
+    {
+        $compiler = new EsbuildCompiler($this->binaryMock());
+
+        $this->assertTrue($compiler->supports($this->asset('app/style.css')));
+    }
+
+    public function testDoesNotSupportVendorCss(): void
+    {
+        $compiler = new EsbuildCompiler($this->binaryMock());
+
+        $this->assertFalse($compiler->supports($this->asset('vendor/lib.css', isVendor: true)));
+    }
+
+    public function testDoesNotSupportCssWhenMinifyCssDisabled(): void
+    {
+        $compiler = new EsbuildCompiler($this->binaryMock(), minifyCss: false);
+
         $this->assertFalse($compiler->supports($this->asset('app/style.css')));
     }
+
+    public function testDoesNotSupportJsWhenMinifyJsDisabled(): void
+    {
+        $compiler = new EsbuildCompiler($this->binaryMock(), minifyJs: false);
+
+        $this->assertFalse($compiler->supports($this->asset('app/main.js')));
+    }
+
 
     // compile() — binary init
 

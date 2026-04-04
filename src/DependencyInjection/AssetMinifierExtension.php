@@ -33,6 +33,8 @@ class AssetMinifierExtension extends Extension
             '$binary'      => $binaryDef,
             '$sourceMaps'  => $config['source_maps'],
             '$debug'       => new Parameter('kernel.debug'),
+            '$minifyJs'    => $config['minify_js'],
+            '$minifyCss'   => $config['minify_css'],
         ]);
         $compilerDef->addTag('asset_mapper.compiler', ['priority' => -100]);
         $container->setDefinition(EsbuildCompiler::class, $compilerDef);

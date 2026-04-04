@@ -10,6 +10,11 @@ Symfony Asset Mapper is deliberately free of Node.js tooling. But without a mini
 
 No `package.json`. No `node_modules`. No extra tooling to maintain.
 
+## What it minifies
+
+- **JavaScript** — whitespace removal, comment stripping, identifier mangling, dead-code elimination
+- **CSS** — whitespace removal, comment stripping, shorthand merging. Color values are preserved in their original format (e.g. `rgba()` stays `rgba()`) to avoid browser compatibility issues
+
 ## Requirements
 
 - PHP 8.1+
@@ -74,6 +79,8 @@ asset_minifier:
     esbuild_version: '0.25.2'  # pin to a specific esbuild version
     binary_path: null           # use a pre-existing binary instead of downloading
     source_maps: false          # set to true to embed inline source maps for production debugging
+    minify_js: true             # set to false to skip JS minification
+    minify_css: true            # set to false to skip CSS minification
 ```
 
 ### Source maps

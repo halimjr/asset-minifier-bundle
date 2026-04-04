@@ -30,6 +30,14 @@ class Configuration implements ConfigurationInterface
                     ->defaultFalse()
                     ->info('Embed source maps inline in minified output. Useful for production debugging.')
                 ->end()
+                ->booleanNode('minify_js')
+                    ->defaultTrue()
+                    ->info('Minify JavaScript assets. Disable to skip JS minification.')
+                ->end()
+                ->booleanNode('minify_css')
+                    ->defaultTrue()
+                    ->info('Minify CSS assets. Disable to skip CSS minification.')
+                ->end()
             ->end()
         ;
 
