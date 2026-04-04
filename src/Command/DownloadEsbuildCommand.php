@@ -66,11 +66,7 @@ class DownloadEsbuildCommand extends Command
 
         try {
             $this->binary->download($output);
-        } catch (PlatformNotSupportedException $e) {
-            $io->error($e->getMessage());
-
-            return Command::FAILURE;
-        } catch (BinaryDownloadException $e) {
+        } catch (PlatformNotSupportedException | BinaryDownloadException $e) {
             $io->error($e->getMessage());
 
             return Command::FAILURE;

@@ -39,7 +39,7 @@ class EsbuildCompiler implements AssetCompilerInterface
             $this->initialized = true;
         }
 
-        $tmp = tempnam(sys_get_temp_dir(), 'esbuild_') . '.js';
+        $tmp = sys_get_temp_dir() . \DIRECTORY_SEPARATOR . 'esbuild_' . bin2hex(random_bytes(8)) . '.js';
 
         try {
             file_put_contents($tmp, $content);
