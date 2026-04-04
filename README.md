@@ -1,19 +1,21 @@
 # Asset Minifier Bundle
 
-A companion bundle for [Symfony Asset Mapper](https://symfony.com/doc/current/frontend/asset_mapper.html) that automatically minifies your JavaScript using [esbuild](https://esbuild.github.io/) — with no Node.js, no npm, and no build pipeline to configure.
+A companion bundle for [Symfony Asset Mapper](https://symfony.com/doc/current/frontend/asset_mapper.html) that automatically minifies your JavaScript and CSS using [esbuild](https://esbuild.github.io/) — with no Node.js, no npm, and no build pipeline to configure.
 
-Asset Mapper already handles import maps, cache-busting hashes, and ES module loading. This bundle completes the picture by shrinking your JS before it ships.
+Asset Mapper already handles import maps, cache-busting hashes, and ES module loading. This bundle completes the picture by shrinking your JS and CSS before they ship.
 
 ## Why this bundle?
 
-Symfony Asset Mapper is deliberately free of Node.js tooling. But without a minification step, your JavaScript ships as readable source code — variable names, comments, and whitespace included. This bundle fills that gap by running each JS file through esbuild at compile time, using a self-contained binary that PHP downloads and manages for you.
+Symfony Asset Mapper is deliberately free of Node.js tooling. But without a minification step, your JavaScript and CSS ship as readable source — comments, whitespace, and verbose names included. This bundle fills that gap by running each JS and CSS file through esbuild at compile time, using a self-contained binary that PHP downloads and manages for you.
 
 No `package.json`. No `node_modules`. No extra tooling to maintain.
 
 ## What it minifies
 
 - **JavaScript** — whitespace removal, comment stripping, identifier mangling, dead-code elimination
-- **CSS** — whitespace removal, comment stripping, shorthand merging. Color values are preserved in their original format (e.g. `rgba()` stays `rgba()`) to avoid browser compatibility issues
+- **CSS** — whitespace removal, comment stripping, shorthand merging (e.g. `margin-top/right/bottom/left` → `margin`). Color values are intentionally preserved in their original format (`rgba()` stays `rgba()`, `hsl()` stays `hsl()`) to avoid browser compatibility issues with older targets
+- **Vendor assets are skipped** in both cases — pre-minified packages from your importmap pass through untouched
+- Works out of the box with [`symfonycasts/tailwind-bundle`](https://github.com/symfonycasts/tailwind-bundle) — Tailwind compiles first, then esbuild minifies the output
 
 ## Requirements
 
@@ -36,7 +38,7 @@ return [
 ];
 ```
 
-That's the entire setup. On the next `php bin/console asset-map:compile`, the esbuild binary is downloaded automatically and all your JavaScript assets are minified.
+That's the entire setup. On the next `php bin/console asset-map:compile`, the esbuild binary is downloaded automatically and all your JavaScript and CSS assets are minified.
 
 ## Benchmarks
 
@@ -55,11 +57,17 @@ Minification includes whitespace removal, comment stripping, and identifier mang
 
 ## How it works
 
-The bundle registers a compiler with Symfony Asset Mapper's pipeline via `AssetCompilerInterface`. During compilation, each of your JavaScript files is piped through esbuild with `--minify --format=esm`, which performs:
+The bundle registers a compiler with Symfony Asset Mapper's pipeline via `AssetCompilerInterface`. During compilation, each JS and CSS file is piped through esbuild, which performs:
 
-- **Whitespace and comment removal**
-- **Identifier mangling** — local variable names are shortened to single characters
-- **Dead-code elimination** — unreachable branches are removed
+**JavaScript** (`--minify --format=esm`):
+- Whitespace and comment removal
+- Identifier mangling — local variable names are shortened to single characters
+- Dead-code elimination — unreachable branches are removed
+
+**CSS** (`--minify --supported:hex-rgba=false`):
+- Whitespace and comment removal
+- Shorthand merging — e.g. four `margin-*` declarations collapsed into one
+- Color values preserved as authored — `rgba()` and `hsl()` are never converted to hex, avoiding compatibility issues with older browsers
 
 The esbuild binary (~5 MB compressed) is downloaded once from the npm registry and cached in `var/esbuild/`. It is version-pinned by the bundle and re-downloaded automatically when you upgrade to a bundle version that ships a newer esbuild release.
 
@@ -68,6 +76,8 @@ The esbuild binary (~5 MB compressed) is downloaded once from the npm registry a
 **Vendor assets are intentionally skipped.** Pre-minified packages managed via importmap (e.g. `@hotwired/stimulus`, `apexcharts`) pass through untouched.
 
 **Stimulus controllers are safe.** The bundle runs after Symfony's `JavaScriptImportPathCompiler`, so import paths are resolved and registered in the importmap before minification occurs. Method names used in `data-action` attributes are not mangled.
+
+**Tailwind CSS users.** If you use `symfonycasts/tailwind-bundle`, it runs at a higher compiler priority than this bundle. Tailwind compiles your CSS first, and esbuild minifies the output. No configuration needed.
 
 ## Configuration
 
