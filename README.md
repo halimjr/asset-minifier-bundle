@@ -14,7 +14,7 @@ No `package.json`. No `node_modules`. No extra tooling to maintain.
 
 - PHP 8.1+
 - `ext-phar` and `ext-zlib` (enabled by default in standard PHP builds)
-- Symfony 6.3 or 7.x with `symfony/asset-mapper`
+- Symfony 6.3, 7.x, or 8.x with `symfony/asset-mapper`
 
 ## Installation
 
