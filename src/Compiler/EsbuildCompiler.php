@@ -3,6 +3,8 @@
 namespace HalimJr\AssetMinifierBundle\Compiler;
 
 use HalimJr\AssetMinifierBundle\Binary\EsbuildBinary;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
 use Symfony\Component\AssetMapper\Compiler\AssetCompilerInterface;
 use Symfony\Component\AssetMapper\MappedAsset;
@@ -13,6 +15,10 @@ use Symfony\Component\Process\Process;
  *
  * Registered with priority -100 so it always runs after Symfony's
  * JavaScriptImportPathCompiler, which must resolve import paths first.
+ *
+ * When esbuild fails (syntax error, unsupported syntax, etc.) the compiler
+ * logs a warning with the full esbuild error output and returns the original
+ * unminified content so the build always completes — no file blocks the others.
  */
 class EsbuildCompiler implements AssetCompilerInterface
 {
@@ -24,6 +30,7 @@ class EsbuildCompiler implements AssetCompilerInterface
         private readonly bool $debug = false,
         private readonly bool $minifyJs = true,
         private readonly bool $minifyCss = true,
+        private readonly LoggerInterface $logger = new NullLogger(),
     ) {}
 
     public function supports(MappedAsset $asset): bool
@@ -57,7 +64,7 @@ class EsbuildCompiler implements AssetCompilerInterface
             $args = [
                 $this->binary->getPath(),
                 '--minify',
-                '--log-level=silent',
+                '--log-level=error',  // capture errors; suppress info/warnings
             ];
 
             if ('js' === $ext) {
@@ -77,15 +84,20 @@ class EsbuildCompiler implements AssetCompilerInterface
             $process->run();
 
             if (!$process->isSuccessful()) {
-                if ($this->debug) {
-                    throw new \RuntimeException(sprintf(
-                        'esbuild failed to minify "%s": %s',
-                        $asset->sourcePath,
-                        trim($process->getErrorOutput()) ?: 'unknown error'
-                    ));
-                }
+                $errorOutput = trim($process->getErrorOutput());
 
-                // In production, degrade gracefully rather than breaking the build.
+                // Replace the temp path with the real source path so the error
+                // points at the actual file the developer owns.
+                $errorOutput = str_replace($tmp, $asset->sourcePath, $errorOutput);
+
+                $this->logger->warning(sprintf(
+                    '[AssetMinifier] esbuild could not minify "%s" — serving unminified.%s',
+                    $asset->sourcePath,
+                    $errorOutput ? "\n" . $errorOutput : ' (no error details from esbuild)',
+                ));
+
+                // Always degrade gracefully; a minification failure must never
+                // block the rest of the build.
                 return $content;
             }
 

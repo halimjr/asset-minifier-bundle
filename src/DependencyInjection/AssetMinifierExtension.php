@@ -10,6 +10,7 @@ use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Parameter;
+use Symfony\Component\DependencyInjection\Reference;
 
 class AssetMinifierExtension extends Extension
 {
@@ -35,6 +36,7 @@ class AssetMinifierExtension extends Extension
             '$debug'       => new Parameter('kernel.debug'),
             '$minifyJs'    => $config['minify_js'],
             '$minifyCss'   => $config['minify_css'],
+            '$logger'      => new Reference('logger'),
         ]);
         $compilerDef->addTag('asset_mapper.compiler', ['priority' => -100]);
         $container->setDefinition(EsbuildCompiler::class, $compilerDef);
