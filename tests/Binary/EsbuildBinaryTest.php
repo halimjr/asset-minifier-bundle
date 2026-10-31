@@ -62,4 +62,19 @@ class EsbuildBinaryTest extends TestCase
         $binary = new EsbuildBinary('/some/dir', '0.25.2', '/usr/local/bin/esbuild');
         $this->assertFalse($binary->isManaged());
     }
+
+    public function testDefaultVersionHasPinnedIntegrityForEverySupportedPlatform(): void
+    {
+        $platforms = ['linux-x64', 'linux-arm64', 'darwin-x64', 'darwin-arm64', 'win32-x64', 'win32-arm64'];
+
+        $this->assertArrayHasKey(EsbuildBinary::DEFAULT_VERSION, EsbuildBinary::KNOWN_INTEGRITY);
+
+        foreach ($platforms as $platform) {
+            $this->assertMatchesRegularExpression(
+                '#^sha512-[A-Za-z0-9+/]{86}==$#',
+                EsbuildBinary::KNOWN_INTEGRITY[EsbuildBinary::DEFAULT_VERSION][$platform] ?? '',
+                sprintf('Missing or malformed pinned hash for %s.', $platform)
+            );
+        }
+    }
 }

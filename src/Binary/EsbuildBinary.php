@@ -12,7 +12,24 @@ use Symfony\Component\Console\Output\OutputInterface;
  */
 class EsbuildBinary
 {
-    public const DEFAULT_VERSION = '0.25.2';
+    public const DEFAULT_VERSION = '0.28.1';
+
+    /**
+     * SHA-512 integrity hashes for the npm tarballs of known esbuild versions, keyed by version and platform.
+     *
+     * These are checked instead of hashes fetched at runtime, so a compromised registry or tampered
+     * response cannot supply a matching hash. Versions not listed here fall back to the registry hash.
+     */
+    public const KNOWN_INTEGRITY = [
+        '0.28.1' => [
+            'linux-x64'    => 'sha512-u/anNYF2mmVOEDwLtnQ1wOr3EZ9sTNGLWrsYGYwHWzGA3Si84IOkHXlbWTD1NB+9/1lcnweYKO54uhxZydNzfA==',
+            'linux-arm64'  => 'sha512-yHs+0uc8+nvEAfAfxrWQKK5peSNzBc4PegcMO0EJ2hT71uA7vB8Ihg2e77R2P7SG5uYjPbHlLLmve4LLLRCf0g==',
+            'darwin-x64'   => 'sha512-zfdzgK9ACBNZLI/CyHTOx81SyNbM6YXn7rxSgX97VjyiPl9W1i4Ka4fgKECEoFCKGpvBj5qArWIGgQjOwkgskQ==',
+            'darwin-arm64' => 'sha512-TZbWkQY7kvTAXbXUT7uVACR5cMHsDiSz9z7ZKAX/RTq/WJEk3QyRr0wZpNhBDX+/0CtdqUIJlOiodQcta6tY3Q==',
+            'win32-x64'    => 'sha512-bm4Mowrv+GXMlpWX++EcXw/iLyd1o3+bJkC2DkWXYVvgZCqD/bSj9ctZeAMC3cIxgjRVR2Dufaiu4YPxr5gW1A==',
+            'win32-arm64'  => 'sha512-lCv9eK/H6ZJWbE7bh2nw54CZ9M2nupBxJcTsdk/QQnWkdSjKGuxmmH8/GWrlT1eMmZfn4dGcCjRte397WqfQXA==',
+        ],
+    ];
 
     /**
      * npm registry URL for platform-specific esbuild packages.
@@ -67,8 +84,8 @@ class EsbuildBinary
      * Downloads and extracts the esbuild binary for the current platform.
      *
      * Uses an exclusive file lock to prevent concurrent downloads in multi-worker deployments.
-     * The tarball integrity is verified against the SHA-512 hash published by the npm registry
-     * before extraction, protecting against corrupted downloads or tampered responses.
+     * The tarball integrity is verified before extraction against the SHA-512 hash pinned in
+     * KNOWN_INTEGRITY, or, for versions not pinned there, the hash published by the npm registry.
      *
      * @throws BinaryDownloadException
      */
@@ -133,7 +150,8 @@ class EsbuildBinary
             $tarPath = $binaryPath . '.tmp.tgz';
 
             try {
-                $integrity = $this->fetchExpectedIntegrity($platform);
+                $integrity = self::KNOWN_INTEGRITY[$this->version][$platform]
+                    ?? $this->fetchExpectedIntegrity($platform);
                 $this->downloadFile($url, $tarPath);
 
                 $output?->writeln('  <info>Verifying integrity...</info>');
@@ -335,7 +353,8 @@ class EsbuildBinary
         }
 
         foreach (new \DirectoryIterator($baseDir) as $item) {
-            if ($item->isDot() || !$item->isDir() || $item->getFilename() === $this->version) {
+            // Never follow symlinks: getRealPath() would resolve them to a directory outside $baseDir.
+            if ($item->isDot() || $item->isLink() || !$item->isDir() || $item->getFilename() === $this->version) {
                 continue;
             }
 
@@ -355,7 +374,13 @@ class EsbuildBinary
         );
 
         foreach ($items as $item) {
-            $item->isDir() ? rmdir($item->getRealPath()) : unlink($item->getRealPath());
+            // Remove links themselves rather than resolving them to their targets.
+            if ($item->isLink()) {
+                @unlink($item->getPathname()) || @rmdir($item->getPathname());
+                continue;
+            }
+
+            $item->isDir() ? rmdir($item->getPathname()) : unlink($item->getPathname());
         }
 
         rmdir($dir);

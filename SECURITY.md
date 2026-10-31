@@ -21,6 +21,8 @@ You can expect an acknowledgement within 48 hours and a resolution or mitigation
 The main attack surface of this bundle is the esbuild binary download. Relevant protections already in place:
 
 - Downloads use HTTPS with TLS peer verification
-- The SHA-512 integrity hash is fetched from the npm registry metadata API and verified against the tarball before extraction
+- For the default esbuild version, the tarball is verified against SHA-512 hashes pinned in the bundle's source (`EsbuildBinary::KNOWN_INTEGRITY`), so a compromised registry or tampered response cannot supply a matching hash
+- For a custom `esbuild_version` that is not pinned, the hash is fetched from the npm registry metadata API. This catches corrupted downloads but not a compromised registry, so prefer the default version or set `binary_path` to a binary you have verified yourself
 - The binary is never written to disk if the hash does not match
 - File locking prevents race conditions during concurrent downloads
+- Cleanup of old versions never follows symlinks out of the binary directory

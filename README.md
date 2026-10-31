@@ -86,7 +86,7 @@ No configuration is required for standard use. The following options are availab
 ```yaml
 # config/packages/asset_minifier.yaml
 asset_minifier:
-    esbuild_version: '0.25.2'  # pin to a specific esbuild version
+    esbuild_version: '0.28.1'  # pin to a specific esbuild version
     binary_path: null           # use a pre-existing binary instead of downloading
     source_maps: false          # set to true to embed inline source maps for production debugging
     minify_js: true             # set to false to skip JS minification
