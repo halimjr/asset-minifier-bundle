@@ -77,4 +77,19 @@ class EsbuildBinaryTest extends TestCase
             );
         }
     }
+
+    public function testContentLengthUsesFinalResponseAfterRedirects(): void
+    {
+        $method = new \ReflectionMethod(EsbuildBinary::class, 'contentLength');
+
+        $this->assertSame(4567, $method->invoke(null, [
+            'HTTP/1.1 301 Moved Permanently',
+            'Content-Length: 0',
+            'Location: https://example.test/file.tgz',
+            'HTTP/1.1 200 OK',
+            'content-length: 4567',
+        ]));
+        $this->assertNull($method->invoke(null, ['HTTP/1.1 200 OK', 'Transfer-Encoding: chunked']));
+        $this->assertNull($method->invoke(null, []));
+    }
 }

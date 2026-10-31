@@ -14,6 +14,7 @@
         "php": ">=8.1",
         "ext-phar": "*",
         "ext-zlib": "*",
+        "psr/log": "^1.1|^2.0|^3.0",
         "symfony/asset-mapper": "^6.3|^7.0|^8.0",
         "symfony/config": "^6.3|^7.0|^8.0",
         "symfony/console": "^6.3|^7.0|^8.0",

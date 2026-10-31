@@ -7,6 +7,7 @@ use HalimJr\AssetMinifierBundle\Command\DownloadEsbuildCommand;
 use HalimJr\AssetMinifierBundle\Compiler\EsbuildCompiler;
 use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Parameter;
@@ -36,7 +37,8 @@ class AssetMinifierExtension extends Extension
             '$debug'       => new Parameter('kernel.debug'),
             '$minifyJs'    => $config['minify_js'],
             '$minifyCss'   => $config['minify_css'],
-            '$logger'      => new Reference('logger'),
+            // Optional: apps without a "logger" service fall back to NullLogger.
+            '$logger'      => new Reference('logger', ContainerInterface::NULL_ON_INVALID_REFERENCE),
         ]);
         $compilerDef->addTag('asset_mapper.compiler', ['priority' => -100]);
         $container->setDefinition(EsbuildCompiler::class, $compilerDef);

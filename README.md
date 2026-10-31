@@ -13,7 +13,7 @@ No `package.json`. No `node_modules`. No extra tooling to maintain.
 ## What it minifies
 
 - **JavaScript** — whitespace removal, comment stripping, identifier mangling, dead-code elimination
-- **CSS** — whitespace removal, comment stripping, shorthand merging (e.g. `margin-top/right/bottom/left` → `margin`). Color values are intentionally preserved in their original format (`rgba()` stays `rgba()`, `hsl()` stays `hsl()`) to avoid browser compatibility issues with older targets
+- **CSS** — whitespace removal, comment stripping, shorthand merging (e.g. `margin-top/right/bottom/left` → `margin`). Colors with transparency stay as `rgba()` instead of becoming 8-digit hex (`#rrggbbaa`), which older browsers don't support. Opaque colors are shortened, e.g. `hsl(120, 100%, 50%)` → `#0f0`
 - **Vendor assets are skipped** in both cases — pre-minified packages from your importmap pass through untouched
 - Works out of the box with [`symfonycasts/tailwind-bundle`](https://github.com/symfonycasts/tailwind-bundle) — Tailwind compiles first, then esbuild minifies the output
 
@@ -67,11 +67,11 @@ The bundle registers a compiler with Symfony Asset Mapper's pipeline via `AssetC
 **CSS** (`--minify --supported:hex-rgba=false`):
 - Whitespace and comment removal
 - Shorthand merging — e.g. four `margin-*` declarations collapsed into one
-- Color values preserved as authored — `rgba()` and `hsl()` are never converted to hex, avoiding compatibility issues with older browsers
+- Colors with transparency stay as `rgba()` and are never written as 8-digit hex (`#rrggbbaa`), avoiding compatibility issues with older browsers. Opaque colors, including `hsl()`, are shortened to the smallest form (e.g. `#0f0`)
 
 The esbuild binary (~5 MB compressed) is downloaded once from the npm registry and cached in `var/esbuild/`. It is version-pinned by the bundle and re-downloaded automatically when you upgrade to a bundle version that ships a newer esbuild release.
 
-**Binary trust model.** The download uses HTTPS with TLS peer verification (the same trust model as every `npm install`). Additionally, the bundle fetches the expected SHA-512 hash from the npm registry metadata API and verifies the tarball before extraction. If the hash does not match, the download is rejected and the binary is never written to disk.
+**Binary trust model.** The download uses HTTPS with TLS peer verification. For the default esbuild version, the tarball is checked against SHA-512 hashes pinned in the bundle's source, so a compromised registry can't supply a matching hash. For a custom `esbuild_version`, the hash comes from the npm registry metadata API. If the hash does not match, or the download is incomplete, it is rejected and the binary is never written to disk.
 
 **Vendor assets are intentionally skipped.** Pre-minified packages managed via importmap (e.g. `@hotwired/stimulus`, `apexcharts`) pass through untouched.
 
@@ -100,6 +100,16 @@ When `source_maps: true`, an inline source map is appended to each minified file
 Note that inline source maps increase file size. For most projects the trade-off is worth it in staging environments; in production, leave it disabled (the default).
 
 `binary_path` is useful in environments where downloading from the npm registry is restricted, or when you manage the esbuild binary through your own provisioning (e.g. system packages, CI cache layers, Docker images).
+
+### When a file can't be minified
+
+If esbuild can't minify a file (for example because of a syntax error), the file is served unminified and the build continues. A warning with esbuild's error, including the file, line and column, is sent to your logger:
+
+```
+[WARNING] [AssetMinifier] esbuild could not minify
+  "assets/controllers/search_controller.js" — serving unminified.
+  …/search_controller.js:139:10: ERROR: The symbol "q" has already been declared
+```
 
 ## Commands
 

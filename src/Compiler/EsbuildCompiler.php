@@ -24,14 +24,18 @@ class EsbuildCompiler implements AssetCompilerInterface
 {
     private bool $initialized = false;
 
+    private readonly LoggerInterface $logger;
+
     public function __construct(
         private readonly EsbuildBinary $binary,
         private readonly bool $sourceMaps = false,
         private readonly bool $debug = false,
         private readonly bool $minifyJs = true,
         private readonly bool $minifyCss = true,
-        private readonly LoggerInterface $logger = new NullLogger(),
-    ) {}
+        ?LoggerInterface $logger = null,
+    ) {
+        $this->logger = $logger ?? new NullLogger();
+    }
 
     public function supports(MappedAsset $asset): bool
     {

@@ -39,4 +39,20 @@ class BundleTest extends TestCase
         $this->assertTrue($config['minify_js']);
         $this->assertTrue($config['minify_css']);
     }
+
+    public function testCompilerBuildsWithoutLoggerService(): void
+    {
+        $container = new \Symfony\Component\DependencyInjection\ContainerBuilder();
+        $container->setParameter('kernel.project_dir', sys_get_temp_dir());
+        $container->setParameter('kernel.debug', false);
+
+        (new AssetMinifierExtension())->load([], $container);
+        $container->getDefinition(\HalimJr\AssetMinifierBundle\Compiler\EsbuildCompiler::class)->setPublic(true);
+        $container->compile();
+
+        $this->assertInstanceOf(
+            \HalimJr\AssetMinifierBundle\Compiler\EsbuildCompiler::class,
+            $container->get(\HalimJr\AssetMinifierBundle\Compiler\EsbuildCompiler::class)
+        );
+    }
 }

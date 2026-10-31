@@ -291,9 +291,43 @@ class EsbuildBinary
             );
         }
 
-        stream_copy_to_stream($source, $dest);
+        $bytes    = stream_copy_to_stream($source, $dest);
+        $meta     = stream_get_meta_data($source);
+        $expected = self::contentLength($meta['wrapper_data'] ?? []);
         fclose($source);
         fclose($dest);
+
+        // A slow or dropped connection leaves a truncated file; report it as such rather than
+        // letting it surface later as an integrity failure that looks like tampering.
+        if ($bytes === false || $meta['timed_out'] || ($expected !== null && $bytes !== $expected)) {
+            throw new BinaryDownloadException(sprintf(
+                'Download of esbuild from "%s" was incomplete (received %d of %s bytes). '
+                . 'Check your internet connection and try again.',
+                $url,
+                (int) $bytes,
+                $expected ?? 'unknown'
+            ));
+        }
+    }
+
+    /**
+     * Returns the Content-Length of the final response in a (possibly redirected) header list.
+     *
+     * @param array<int, string> $headers
+     */
+    private static function contentLength(array $headers): ?int
+    {
+        $length = null;
+
+        foreach ($headers as $header) {
+            if (str_starts_with($header, 'HTTP/')) {
+                $length = null;
+            } elseif (preg_match('/^Content-Length:\s*(\d+)/i', $header, $m)) {
+                $length = (int) $m[1];
+            }
+        }
+
+        return $length;
     }
 
     /**

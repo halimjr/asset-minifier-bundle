@@ -5,6 +5,7 @@ namespace HalimJr\AssetMinifierBundle\Tests\Compiler;
 use HalimJr\AssetMinifierBundle\Binary\EsbuildBinary;
 use HalimJr\AssetMinifierBundle\Compiler\EsbuildCompiler;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\AssetMapper\AssetMapperInterface;
 use Symfony\Component\AssetMapper\MappedAsset;
 
@@ -137,17 +138,21 @@ class EsbuildCompilerTest extends TestCase
         $this->assertSame($content, $result);
     }
 
-    public function testThrowsInDebugModeOnProcessFailure(): void
+    public function testLogsWarningAndReturnsOriginalContentInDebugModeOnProcessFailure(): void
     {
-        $compiler = new EsbuildCompiler($this->binaryStub(), debug: true);
+        $logger = $this->createMock(LoggerInterface::class);
+        $logger->expects($this->once())
+            ->method('warning')
+            ->with($this->stringContains('esbuild could not minify "/project/assets/app/main.js"'));
 
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessageMatches('/esbuild failed to minify/');
+        $compiler = new EsbuildCompiler($this->binaryStub(), debug: true, logger: $logger);
 
-        $compiler->compile(
+        $result = $compiler->compile(
             'console.log(1)',
             $this->asset('app/main.js'),
             $this->createStub(AssetMapperInterface::class)
         );
+
+        $this->assertSame('console.log(1)', $result);
     }
 }

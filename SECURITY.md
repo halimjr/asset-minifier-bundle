@@ -4,9 +4,9 @@
 
 | Version | Supported |
 |---|---|
+| 1.9.x | ✓ |
 | 1.8.x | ✓ |
-| 1.7.x | ✓ |
-| < 1.7 | ✗ |
+| < 1.8 | ✗ |
 
 ## Reporting a vulnerability
 
@@ -23,6 +23,6 @@ The main attack surface of this bundle is the esbuild binary download. Relevant 
 - Downloads use HTTPS with TLS peer verification
 - For the default esbuild version, the tarball is verified against SHA-512 hashes pinned in the bundle's source (`EsbuildBinary::KNOWN_INTEGRITY`), so a compromised registry or tampered response cannot supply a matching hash
 - For a custom `esbuild_version` that is not pinned, the hash is fetched from the npm registry metadata API. This catches corrupted downloads but not a compromised registry, so prefer the default version or set `binary_path` to a binary you have verified yourself
-- The binary is never written to disk if the hash does not match
+- The binary is never written to disk if the hash does not match or the download is incomplete
 - File locking prevents race conditions during concurrent downloads
 - Cleanup of old versions never follows symlinks out of the binary directory
