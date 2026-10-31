@@ -91,8 +91,13 @@ class EsbuildCompiler implements AssetCompilerInterface
                 $errorOutput = trim($process->getErrorOutput());
 
                 // Replace the temp path with the real source path so the error
-                // points at the actual file the developer owns.
-                $errorOutput = str_replace($tmp, $asset->sourcePath, $errorOutput);
+                // points at the actual file the developer owns. esbuild prints
+                // forward slashes on Windows, so replace that form too.
+                $errorOutput = str_replace(
+                    [$tmp, str_replace('\\', '/', $tmp)],
+                    $asset->sourcePath,
+                    $errorOutput
+                );
 
                 $this->logger->warning(sprintf(
                     '[AssetMinifier] esbuild could not minify "%s" — serving unminified.%s',
