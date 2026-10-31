@@ -12,16 +12,16 @@ use Symfony\Component\Console\Tester\CommandTester;
 
 class DownloadEsbuildCommandTest extends TestCase
 {
-    private function binary(bool $available = true, bool $managed = true): EsbuildBinary
+    private function binary(bool $available = true, bool $managed = true, bool $mock = false): EsbuildBinary
     {
-        $mock = $this->createMock(EsbuildBinary::class);
-        $mock->method('isAvailable')->willReturn($available);
-        $mock->method('isManaged')->willReturn($managed);
-        $mock->method('getPath')->willReturn('/var/esbuild/0.25.2/esbuild');
-        $mock->method('getVersion')->willReturn('0.25.2');
-        $mock->method('getDownloadUrl')->willReturn('https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.25.2.tgz');
+        $binary = $mock ? $this->createMock(EsbuildBinary::class) : $this->createStub(EsbuildBinary::class);
+        $binary->method('isAvailable')->willReturn($available);
+        $binary->method('isManaged')->willReturn($managed);
+        $binary->method('getPath')->willReturn('/var/esbuild/0.25.2/esbuild');
+        $binary->method('getVersion')->willReturn('0.25.2');
+        $binary->method('getDownloadUrl')->willReturn('https://registry.npmjs.org/@esbuild/linux-x64/-/linux-x64-0.25.2.tgz');
 
-        return $mock;
+        return $binary;
     }
 
     private function tester(EsbuildBinary $binary): CommandTester
@@ -42,7 +42,7 @@ class DownloadEsbuildCommandTest extends TestCase
 
     public function testDownloadsBinaryAndReturnsSuccess(): void
     {
-        $binary = $this->binary(available: false);
+        $binary = $this->binary(available: false, mock: true);
         $binary->expects($this->once())->method('download');
 
         $this->assertSame(Command::SUCCESS, $this->tester($binary)->execute([]));

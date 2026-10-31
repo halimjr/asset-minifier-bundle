@@ -20,62 +20,62 @@ class EsbuildCompilerTest extends TestCase
         );
     }
 
-    private function binaryMock(bool $available = true): EsbuildBinary
+    private function binaryStub(bool $available = true): EsbuildBinary
     {
-        $mock = $this->createMock(EsbuildBinary::class);
-        $mock->method('isAvailable')->willReturn($available);
-        $mock->method('getPath')->willReturn('/nonexistent/esbuild');
+        $stub = $this->createStub(EsbuildBinary::class);
+        $stub->method('isAvailable')->willReturn($available);
+        $stub->method('getPath')->willReturn('/nonexistent/esbuild');
 
-        return $mock;
+        return $stub;
     }
 
     // supports()
 
     public function testSupportsNonVendorJs(): void
     {
-        $compiler = new EsbuildCompiler($this->binaryMock());
+        $compiler = new EsbuildCompiler($this->binaryStub());
 
         $this->assertTrue($compiler->supports($this->asset('app/main.js')));
     }
 
     public function testDoesNotSupportVendorJs(): void
     {
-        $compiler = new EsbuildCompiler($this->binaryMock());
+        $compiler = new EsbuildCompiler($this->binaryStub());
 
         $this->assertFalse($compiler->supports($this->asset('vendor/lib.js', isVendor: true)));
     }
 
     public function testDoesNotSupportImageAsset(): void
     {
-        $compiler = new EsbuildCompiler($this->binaryMock());
+        $compiler = new EsbuildCompiler($this->binaryStub());
 
         $this->assertFalse($compiler->supports($this->asset('app/logo.png')));
     }
 
     public function testSupportsCssAsset(): void
     {
-        $compiler = new EsbuildCompiler($this->binaryMock());
+        $compiler = new EsbuildCompiler($this->binaryStub());
 
         $this->assertTrue($compiler->supports($this->asset('app/style.css')));
     }
 
     public function testDoesNotSupportVendorCss(): void
     {
-        $compiler = new EsbuildCompiler($this->binaryMock());
+        $compiler = new EsbuildCompiler($this->binaryStub());
 
         $this->assertFalse($compiler->supports($this->asset('vendor/lib.css', isVendor: true)));
     }
 
     public function testDoesNotSupportCssWhenMinifyCssDisabled(): void
     {
-        $compiler = new EsbuildCompiler($this->binaryMock(), minifyCss: false);
+        $compiler = new EsbuildCompiler($this->binaryStub(), minifyCss: false);
 
         $this->assertFalse($compiler->supports($this->asset('app/style.css')));
     }
 
     public function testDoesNotSupportJsWhenMinifyJsDisabled(): void
     {
-        $compiler = new EsbuildCompiler($this->binaryMock(), minifyJs: false);
+        $compiler = new EsbuildCompiler($this->binaryStub(), minifyJs: false);
 
         $this->assertFalse($compiler->supports($this->asset('app/main.js')));
     }
@@ -125,7 +125,7 @@ class EsbuildCompilerTest extends TestCase
 
     public function testReturnsOriginalContentOnProcessFailure(): void
     {
-        $compiler = new EsbuildCompiler($this->binaryMock(), debug: false);
+        $compiler = new EsbuildCompiler($this->binaryStub(), debug: false);
         $content  = 'console.log("hello")';
 
         $result = $compiler->compile(
@@ -139,7 +139,7 @@ class EsbuildCompilerTest extends TestCase
 
     public function testThrowsInDebugModeOnProcessFailure(): void
     {
-        $compiler = new EsbuildCompiler($this->binaryMock(), debug: true);
+        $compiler = new EsbuildCompiler($this->binaryStub(), debug: true);
 
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessageMatches('/esbuild failed to minify/');

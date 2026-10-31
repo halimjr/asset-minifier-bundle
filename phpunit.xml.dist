@@ -4,6 +4,9 @@
          bootstrap="vendor/autoload.php"
          colors="true"
          failOnWarning="true"
+         failOnNotice="true"
+         failOnDeprecation="true"
+         failOnRisky="true"
 >
     <testsuites>
         <testsuite name="Asset Minifier Bundle Test Suite">
